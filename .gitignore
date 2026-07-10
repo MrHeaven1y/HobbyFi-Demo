@@ -7,6 +7,7 @@ __pycache__/
 .env_hfi/
 venv/
 .venv/
+.test_venv/
 
 # Environment variables (contains secrets)
 .env
