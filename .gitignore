@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env_hfi/
+venv/
+.venv/
+
+# Environment variables (contains secrets)
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp uploads
+temp_uploads/
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage

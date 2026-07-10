@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: hobbyfi-copilot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_NAME
+        value: HobbyFi Copilot
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hobbyfi-postgres
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: LLM_MODEL_NAME
+        value: gemini-2.5-flash
+      - key: ENABLE_LOCAL_DEMO_FALLBACK
+        value: true
+      - key: DEMO_LLM_CALL_BUDGET
+        value: 6
+      - key: LOCAL_MODEL_ENABLED
+        value: false
+
+databases:
+  - name: hobbyfi-postgres
+    plan: free
+    databaseName: hobbyfi
+    user: hobbyfi

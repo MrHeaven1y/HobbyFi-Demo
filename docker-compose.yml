@@ -1,0 +1,59 @@
+# ==============================================================================
+# HobbyFi Copilot - Docker Compose
+# ==============================================================================
+# Orchestrates the full stack: FastAPI app + PostgreSQL with pgvector.
+# All services are free and open-source.
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f app    # Follow app logs
+#   docker-compose down -v        # Stop and remove volumes
+# ==============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # PostgreSQL + pgvector (Vector Database)
+  # --------------------------------------------------------------------------
+  # Uses the official pgvector Docker image which bundles PostgreSQL 16
+  # with the pgvector extension pre-installed. No license fees.
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: hobbyfi-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hobbyfi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d hobbyfi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --------------------------------------------------------------------------
+  # HobbyFi Copilot API (FastAPI Application)
+  # --------------------------------------------------------------------------
+  app:
+    build: .
+    container_name: hobbyfi-copilot
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to point to the Docker network hostname
+      DATABASE_URL: postgresql+psycopg2://user:password@db:5432/hobbyfi
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Mount source code for hot-reload during development
+      - .:/app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local

@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}HobbyFi Copilot - Chat{% endblock %}
+
+{% block body %}
+<div x-data="chatApp()" x-init="init()" class="flex h-screen w-screen overflow-hidden">
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- MOBILE OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div x-show="sidebarOpen" x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity duration-300"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         @click="sidebarOpen = false"
+         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden">
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- SIDEBAR -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+           class="fixed lg:relative z-50 flex flex-col w-72 h-full glass-strong sidebar-enter shrink-0">
+
+        <!-- ── Brand ── -->
+        <div class="p-5 border-b border-white/[0.06]">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                        </svg>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white tracking-tight">HobbyFi</h1>
+                    <p class="text-[11px] font-medium text-indigo-400 tracking-wider uppercase">Copilot</p>
+                </div>
+                <!-- Close sidebar (mobile) -->
+                <button @click="sidebarOpen = false" class="ml-auto lg:hidden p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── New Chat Button ── -->
+        <div class="p-4">
+            <button @click="newChat()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-semibold btn-glow transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/20">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                New Chat
+            </button>
+        </div>
+
+        <!-- ── Conversation History ── -->
+        <div class="flex-1 overflow-y-auto px-3 space-y-1">
+            <p class="px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recent</p>
+
+            <template x-for="(conv, idx) in conversations" :key="idx">
+                <button @click="loadConversation(idx)"
+                        :class="currentConv === idx ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'"
+                        class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group">
+                    <svg class="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-80" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+                    <span class="text-sm truncate" x-text="conv.title"></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- ── Vendor Info ── -->
+        <div class="p-4 border-t border-white/[0.06]">
+            <div class="glass rounded-xl p-3.5">
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">A</div>
+                        <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-navy pulse-online"></div>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">Acme Corp</p>
+                        <p class="text-[11px] text-slate-500">v_12345_abc</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- MAIN CONTENT -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <main class="flex-1 flex flex-col min-w-0 h-full relative">
+
+        <!-- ── Top Bar ── -->
+        <header class="flex items-center gap-3 px-4 sm:px-6 py-3 glass border-b border-white/[0.06] shrink-0">
+            <!-- Mobile menu toggle -->
+            <button @click="sidebarOpen = true" class="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors">
+                <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+            </button>
+
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-400 pulse-online"></div>
+                <h2 class="text-sm font-semibold text-white">Copilot Assistant</h2>
+            </div>
+
+            <div class="ml-auto flex items-center gap-2">
+                <span class="hidden sm:inline text-xs text-slate-500 bg-white/5 px-2.5 py-1 rounded-full">AI-powered</span>
+                <div class="text-xs text-slate-500 bg-white/5 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                    Online
+                </div>
+            </div>
+        </header>
+
+        <!-- ── Chat Messages Container ── -->
+        <div id="chat-container" class="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-2" x-ref="chatContainer">
+
+            <!-- Welcome message -->
+            <div x-show="messages.length === 0" x-transition class="flex flex-col items-center justify-center h-full text-center px-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center mb-6 shadow-xl shadow-indigo-500/20 animate-pulse-glow">
+                    <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-white mb-2">Welcome to HobbyFi Copilot</h2>
+                <p class="text-slate-400 text-sm max-w-md leading-relaxed mb-8">
+                    Your AI-powered assistant for managing vendors, memberships, and community insights. Ask me anything about your portal.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+                    <button @click="sendSuggestion('Show me vendor info for v_12345_abc')"
+                            class="glass rounded-xl px-4 py-3 text-left hover:bg-white/[0.08] transition-all duration-200 group cursor-pointer">
+                        <p class="text-xs text-indigo-400 font-semibold mb-1">Vendor Info</p>
+                        <p class="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Show me vendor info for Acme Corp</p>
+                    </button>
+                    <button @click="sendSuggestion('List trial users for Badminton for vendor v_12345_abc')"
+                            class="glass rounded-xl px-4 py-3 text-left hover:bg-white/[0.08] transition-all duration-200 group cursor-pointer">
+                        <p class="text-xs text-violet-400 font-semibold mb-1">Trial Users</p>
+                        <p class="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">List trial users for Badminton</p>
+                    </button>
+                    <button @click="sendSuggestion('What is my payout balance?')"
+                            class="glass rounded-xl px-4 py-3 text-left hover:bg-white/[0.08] transition-all duration-200 group cursor-pointer">
+                        <p class="text-xs text-emerald-400 font-semibold mb-1">Payouts</p>
+                        <p class="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">What is my payout balance?</p>
+                    </button>
+                    <button @click="sendSuggestion('Update membership for user u_001 in game g_001 to active')"
+                            class="glass rounded-xl px-4 py-3 text-left hover:bg-white/[0.08] transition-all duration-200 group cursor-pointer">
+                        <p class="text-xs text-amber-400 font-semibold mb-1">Memberships</p>
+                        <p class="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Upgrade a trial user to active</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages rendered by Alpine -->
+            <template x-for="(msg, idx) in messages" :key="idx">
+                <div class="msg-enter" :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'" :style="'animation-delay:' + (idx * 0.05) + 's'">
+
+                    <!-- ── AI Message ── -->
+                    <div x-show="msg.role === 'assistant'" class="flex gap-3 max-w-[85%] sm:max-w-2xl">
+                        <div class="shrink-0 mt-1">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-md">
+                                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-w-0">
+                            <div class="glass rounded-2xl rounded-tl-md px-4 py-3">
+                                <div class="markdown-body text-sm text-slate-300 leading-relaxed" x-html="renderMarkdown(msg.content)"></div>
+                            </div>
+                            <!-- Sources -->
+                            <template x-if="msg.sources && msg.sources.length > 0">
+                                <div class="flex flex-wrap gap-1.5 pl-1">
+                                    <template x-for="src in msg.sources" :key="src">
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" x-text="src"></span>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="msg.mode || msg.warning">
+                                <div class="flex flex-wrap gap-1.5 pl-1">
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full border"
+                                          :class="msg.mode === 'llm' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' : (msg.mode === 'local_model' ? 'bg-sky-500/10 text-sky-300 border-sky-500/20' : 'bg-amber-500/10 text-amber-300 border-amber-500/20')"
+                                          x-text="msg.mode === 'llm' ? 'Gemini mode' : (msg.mode === 'local_model' ? 'Local model mode' : 'Deterministic fallback')"></span>
+                                    <template x-if="msg.remaining_llm_calls !== null && msg.remaining_llm_calls !== undefined">
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10"
+                                              x-text="'Demo LLM calls left: ' + msg.remaining_llm_calls"></span>
+                                    </template>
+                                    <template x-if="msg.warning">
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                                              x-text="msg.warning"></span>
+                                    </template>
+                                </div>
+                            </template>
+                            <!-- Approval Card -->
+                            <template x-if="msg.requires_approval && msg.approval_payload">
+                                <div class="gradient-border rounded-xl overflow-hidden">
+                                    <div class="glass-strong rounded-xl p-4 space-y-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                                            </div>
+                                            <h4 class="text-sm font-semibold text-amber-300">Action Requires Approval</h4>
+                                        </div>
+                                        <div class="bg-black/20 rounded-lg p-3 space-y-1.5">
+                                            <p class="text-xs text-slate-400">
+                                                <span class="text-slate-500">Action:</span>
+                                                <span class="text-slate-300 font-medium" x-text="msg.approval_payload.action || 'update_membership'"></span>
+                                            </p>
+                                            <template x-if="msg.approval_payload.user_id">
+                                                <p class="text-xs text-slate-400">
+                                                    <span class="text-slate-500">User:</span>
+                                                    <span class="text-slate-300" x-text="msg.approval_payload.user_id"></span>
+                                                </p>
+                                            </template>
+                                            <template x-if="msg.approval_payload.game_id">
+                                                <p class="text-xs text-slate-400">
+                                                    <span class="text-slate-500">Game:</span>
+                                                    <span class="text-slate-300" x-text="msg.approval_payload.game_id"></span>
+                                                </p>
+                                            </template>
+                                            <template x-if="msg.approval_payload.new_status">
+                                                <p class="text-xs text-slate-400">
+                                                    <span class="text-slate-500">New Status:</span>
+                                                    <span class="text-emerald-400 font-medium" x-text="msg.approval_payload.new_status"></span>
+                                                </p>
+                                            </template>
+                                        </div>
+                                        <div class="flex gap-2" x-show="!msg.approval_resolved">
+                                            <button @click="handleApproval(idx, 'approve')"
+                                                    :disabled="msg.approval_processing"
+                                                    :class="msg.approval_processing ? 'opacity-60 cursor-not-allowed' : 'hover:bg-emerald-500/30 active:scale-[0.97]'"
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-semibold btn-glow-green transition-all">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                                <span x-text="msg.approval_processing && msg.approval_action === 'approve' ? 'Approving...' : 'Approve'"></span>
+                                            </button>
+                                            <button @click="handleApproval(idx, 'reject')"
+                                                    :disabled="msg.approval_processing"
+                                                    :class="msg.approval_processing ? 'opacity-60 cursor-not-allowed' : 'hover:bg-red-500/30 active:scale-[0.97]'"
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm font-semibold btn-glow-red transition-all">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                                                <span x-text="msg.approval_processing && msg.approval_action === 'reject' ? 'Rejecting...' : 'Reject'"></span>
+                                            </button>
+                                        </div>
+                                        <div x-show="msg.approval_resolved" class="text-center py-1">
+                                            <span class="text-xs font-semibold px-3 py-1 rounded-full"
+                                                  :class="msg.approval_status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'"
+                                                  x-text="msg.approval_status === 'approved' ? 'Approved' : 'Rejected'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- ── User Message ── -->
+                    <div x-show="msg.role === 'user'" class="max-w-[85%] sm:max-w-xl">
+                        <div class="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-2xl rounded-tr-md px-4 py-3 shadow-lg shadow-indigo-500/10">
+                            <p class="text-sm text-white leading-relaxed" x-text="msg.content"></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ── Typing Indicator ── -->
+            <div x-show="isLoading" x-transition class="flex gap-3">
+                <div class="shrink-0 mt-1">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-md">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+                    </div>
+                </div>
+                <div class="glass rounded-2xl rounded-tl-md px-5 py-4">
+                    <div class="flex gap-1.5 items-center">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
+                    <template x-if="loadingNotice">
+                        <p class="text-xs text-slate-400 mt-3 max-w-sm" x-text="loadingNotice"></p>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Input Area ── -->
+        <div class="shrink-0 p-4 sm:p-6 border-t border-white/[0.06]">
+            <div class="max-w-3xl mx-auto">
+                <form @submit.prevent="sendMessage()" class="relative">
+                    <div class="glass-strong rounded-2xl gradient-border overflow-hidden flex items-end">
+                        <textarea x-model="userInput"
+                                  x-ref="chatInput"
+                                  @keydown.enter.prevent="if(!$event.shiftKey) sendMessage()"
+                                  @input="autoResize($event)"
+                                  :disabled="isLoading"
+                                  rows="1"
+                                  placeholder="Ask HobbyFi Copilot anything..."
+                                  class="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 px-5 py-3.5 resize-none focus:outline-none max-h-32 leading-relaxed"></textarea>
+                        <button type="submit"
+                                :disabled="isLoading || !userInput.trim()"
+                                :class="userInput.trim() && !isLoading ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40' : 'bg-white/5 text-slate-600 cursor-not-allowed'"
+                                class="m-2 p-2.5 rounded-xl transition-all duration-200 shrink-0">
+                            <svg x-show="!isLoading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
+                            <!-- Loading spinner -->
+                            <svg x-show="isLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        </button>
+                    </div>
+                </form>
+                <p class="text-center text-[11px] text-slate-600 mt-2.5">HobbyFi Copilot may produce inaccurate information. Verify critical actions.</p>
+            </div>
+        </div>
+
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function chatApp() {
+    return {
+        sidebarOpen: false,
+        userInput: '',
+        isLoading: false,
+        loadingNotice: '',
+        loadingTimers: [],
+        vendorId: 'v_12345_abc',
+        conversationId: null,
+        messages: [],
+        conversations: [
+            { title: 'Vendor analytics query' },
+            { title: 'Trial user management' },
+            { title: 'Membership upgrade flow' },
+        ],
+        currentConv: 0,
+
+        init() {
+            this.$nextTick(() => {
+                this.$refs.chatInput?.focus();
+            });
+        },
+
+        renderMarkdown(text) {
+            if (!text) return '';
+            try {
+                return marked.parse(text, { breaks: true, gfm: true });
+            } catch (e) {
+                return text.replace(/\n/g, '<br>');
+            }
+        },
+
+        autoResize(event) {
+            const textarea = event.target;
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+        },
+
+        scrollToBottom() {
+            this.$nextTick(() => {
+                const container = this.$refs.chatContainer;
+                if (container) {
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                }
+            });
+        },
+
+        getChatHistory() {
+            return this.messages
+                .filter(m => !m.requires_approval)
+                .map(m => ({ role: m.role, content: m.content }));
+        },
+
+        async sendMessage() {
+            const question = this.userInput.trim();
+            if (!question || this.isLoading) return;
+
+            // Add user message
+            this.messages.push({ role: 'user', content: question });
+            this.userInput = '';
+            this.isLoading = true;
+            this.startLoadingNotices();
+            this.scrollToBottom();
+
+            // Reset textarea height
+            if (this.$refs.chatInput) {
+                this.$refs.chatInput.style.height = 'auto';
+            }
+
+            try {
+                const response = await fetch('/api/v1/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Vendor-ID': this.vendorId
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        chat_history: this.getChatHistory(),
+                        conversation_id: this.conversationId
+                    })
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+                this.conversationId = data.conversation_id || this.conversationId;
+
+                const approvalPayload = data.approval_payload || null;
+                if (approvalPayload && data.audit_log_id) {
+                    approvalPayload.audit_log_id = data.audit_log_id;
+                }
+
+                // Add AI response
+                this.messages.push({
+                    role: 'assistant',
+                    content: data.answer,
+                    sources: data.sources || [],
+                    requires_approval: data.requires_approval || false,
+                    approval_payload: approvalPayload,
+                    audit_log_id: data.audit_log_id || null,
+                    mode: data.mode || 'llm',
+                    warning: data.warning || null,
+                    remaining_llm_calls: data.remaining_llm_calls,
+                    approval_processing: false,
+                    approval_action: null,
+                    approval_resolved: false,
+                    approval_status: null
+                });
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                this.messages.push({
+                    role: 'assistant',
+                    content: 'Sorry, I encountered an error processing your request. Please try again.',
+                    sources: [],
+                    requires_approval: false,
+                });
+            } finally {
+                this.isLoading = false;
+                this.clearLoadingNotices();
+                this.scrollToBottom();
+            }
+        },
+
+        startLoadingNotices() {
+            this.clearLoadingNotices();
+            this.loadingNotice = '';
+            this.loadingTimers = [
+                setTimeout(() => {
+                    this.loadingNotice = 'Contacting the organization Gemini API and preparing CRM tools.';
+                    this.scrollToBottom();
+                }, 1800),
+                setTimeout(() => {
+                    this.loadingNotice = 'The organization API can be quota-limited in this demo. If it is exhausted, fallback will start automatically.';
+                    this.scrollToBottom();
+                }, 4500),
+                setTimeout(() => {
+                    this.loadingNotice = 'Still waiting on the external model. The app will fall back to a local model or deterministic audited response if needed.';
+                    this.scrollToBottom();
+                }, 8000)
+            ];
+        },
+
+        clearLoadingNotices() {
+            this.loadingTimers.forEach(timer => clearTimeout(timer));
+            this.loadingTimers = [];
+            this.loadingNotice = '';
+        },
+
+        sendSuggestion(text) {
+            this.userInput = text;
+            this.sendMessage();
+        },
+
+        async handleApproval(msgIdx, action) {
+            const msg = this.messages[msgIdx];
+            if (!msg || !msg.approval_payload) return;
+            if (msg.approval_processing || msg.approval_resolved) return;
+
+            try {
+                msg.approval_processing = true;
+                msg.approval_action = action;
+                const auditLogId = msg.audit_log_id || msg.approval_payload.audit_log_id;
+                if (!auditLogId) {
+                    throw new Error('Missing audit log id for approval action.');
+                }
+
+                const endpoint = action === 'approve'
+                    ? '/api/v1/approvals/approve'
+                    : '/api/v1/approvals/reject';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Vendor-ID': this.vendorId
+                    },
+                    body: JSON.stringify({
+                        audit_log_id: auditLogId,
+                        resolved_by: 'demo-vendor-user'
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    msg.approval_resolved = true;
+                    msg.approval_status = action === 'approve' ? 'approved' : 'rejected';
+                    this.messages.push({
+                        role: 'assistant',
+                        content: action === 'approve'
+                            ? 'Action has been **approved** and executed successfully.'
+                            : 'Action has been **rejected**. No changes were made.',
+                        sources: [],
+                        requires_approval: false
+                    });
+                } else {
+                    let detail = `The ${action} action could not be processed by the server.`;
+                    try {
+                        const errorBody = await response.json();
+                        if (errorBody.detail) detail = errorBody.detail;
+                    } catch (parseError) {}
+                    this.messages.push({
+                        role: 'assistant',
+                        content: detail,
+                        sources: [],
+                        requires_approval: false
+                    });
+                }
+            } catch (error) {
+                this.messages.push({
+                    role: 'assistant',
+                    content: `Could not reach the server for ${action}. The action was not executed.`,
+                    sources: [],
+                    requires_approval: false
+                });
+            } finally {
+                msg.approval_processing = false;
+                msg.approval_action = null;
+            }
+            this.scrollToBottom();
+        },
+
+        newChat() {
+            this.clearLoadingNotices();
+            this.messages = [];
+            this.conversationId = null;
+            this.sidebarOpen = false;
+            this.$nextTick(() => this.$refs.chatInput?.focus());
+        },
+
+        loadConversation(idx) {
+            this.currentConv = idx;
+            this.sidebarOpen = false;
+            // In a full implementation this would load conversation history from backend
+        }
+    };
+}
+</script>
+{% endblock %}

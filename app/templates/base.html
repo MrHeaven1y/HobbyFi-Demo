@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HobbyFi Copilot - AI-powered vendor portal assistant">
+    <meta name="theme-color" content="#0f0f23">
+    <title>{% block title %}HobbyFi Copilot{% endblock %}</title>
+
+    <!-- Favicon placeholder -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        surface: {
+                            DEFAULT: 'rgba(255,255,255,0.05)',
+                            hover: 'rgba(255,255,255,0.08)',
+                            active: 'rgba(255,255,255,0.12)',
+                        },
+                        navy: { DEFAULT: '#0f0f23', light: '#161637', lighter: '#1e1e4a' },
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s ease-out forwards',
+                        'bounce-dot': 'bounceDot 1.4s ease-in-out infinite',
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                        'shimmer': 'shimmer 2s linear infinite',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        bounceDot: { '0%, 80%, 100%': { transform: 'scale(0)' }, '40%': { transform: 'scale(1)' } },
+                        pulseGlow: { '0%, 100%': { boxShadow: '0 0 5px rgba(99,102,241,0.4)' }, '50%': { boxShadow: '0 0 20px rgba(99,102,241,0.8)' } },
+                        shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+                    },
+                    backdropBlur: { xs: '2px' },
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* ─── Global Styles ─── */
+        * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.3) transparent; }
+        *::-webkit-scrollbar { width: 6px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+        *::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
+
+        body {
+            background: #0f0f23;
+            font-family: 'Inter', system-ui, sans-serif;
+            overflow: hidden;
+        }
+
+        /* ─── Glassmorphism ─── */
+        .glass {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* ─── Gradient Borders ─── */
+        .gradient-border {
+            position: relative;
+        }
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.5), rgba(139,92,246,0.5), rgba(99,102,241,0.1));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        /* ─── Typing Indicator ─── */
+        .typing-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #6366f1;
+            display: inline-block;
+            animation: bounceDot 1.4s ease-in-out infinite;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounceDot {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ─── Message Animations ─── */
+        .msg-enter {
+            animation: msgSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes msgSlideIn {
+            0% { opacity: 0; transform: translateY(16px) scale(0.97); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ─── Hover Glow ─── */
+        .btn-glow {
+            transition: all 0.25s ease;
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 20px rgba(99,102,241,0.4), 0 0 60px rgba(99,102,241,0.1);
+        }
+        .btn-glow-green:hover {
+            box-shadow: 0 0 20px rgba(16,185,129,0.4), 0 0 60px rgba(16,185,129,0.1);
+        }
+        .btn-glow-red:hover {
+            box-shadow: 0 0 20px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.1);
+        }
+
+        /* ─── Markdown Content Styles ─── */
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: #e2e8f0; font-weight: 600; margin: 0.75em 0 0.4em; }
+        .markdown-body h1 { font-size: 1.25rem; }
+        .markdown-body h2 { font-size: 1.1rem; }
+        .markdown-body h3 { font-size: 1rem; }
+        .markdown-body p { margin: 0.4em 0; line-height: 1.65; }
+        .markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0.4em 0; }
+        .markdown-body li { margin: 0.2em 0; }
+        .markdown-body code {
+            background: rgba(99,102,241,0.15);
+            color: #a5b4fc;
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-size: 0.88em;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+        .markdown-body pre {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 1em;
+            overflow-x: auto;
+            margin: 0.6em 0;
+        }
+        .markdown-body pre code {
+            background: none;
+            padding: 0;
+            color: #c4b5fd;
+        }
+        .markdown-body a { color: #818cf8; text-decoration: underline; }
+        .markdown-body strong { color: #e2e8f0; font-weight: 600; }
+        .markdown-body blockquote {
+            border-left: 3px solid #6366f1;
+            padding-left: 1em;
+            color: #94a3b8;
+            margin: 0.5em 0;
+        }
+        .markdown-body table { border-collapse: collapse; width: 100%; margin: 0.6em 0; }
+        .markdown-body th, .markdown-body td { border: 1px solid rgba(255,255,255,0.1); padding: 0.5em 0.75em; text-align: left; }
+        .markdown-body th { background: rgba(99,102,241,0.1); color: #c4b5fd; font-weight: 600; }
+
+        /* ─── Sidebar Transition ─── */
+        .sidebar-enter { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
+
+        /* ─── Online Pulse ─── */
+        .pulse-online {
+            animation: pulseOnline 2s ease-in-out infinite;
+        }
+        @keyframes pulseOnline {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        }
+
+        /* ─── Shimmer loading ─── */
+        .shimmer-bg {
+            background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+        }
+
+        /* ─── Focus ring ─── */
+        .focus-ring:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #0f0f23, 0 0 0 4px rgba(99,102,241,0.5);
+        }
+
+        /* ─── HTMX Indicator ─── */
+        .htmx-indicator { opacity: 0; transition: opacity 0.3s ease; }
+        .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full text-slate-300 antialiased">
+    <!-- Main content -->
+    <div class="relative z-10 h-full">
+        {% block body %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
