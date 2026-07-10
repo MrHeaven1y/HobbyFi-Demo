@@ -2,171 +2,98 @@
 
 **Author:** Dibyendu Mukherjee  
 **Date:** July 2026  
-**Project:** AI Copilot for HobbyFi's AI-CRM Vendor Portal  
+**Scope:** AI Copilot for HobbyFi's AI-CRM Vendor Portal  
 
 ---
 
 ## 1. Executive Summary
+The **HobbyFi Copilot** is a secure, tool-augmented AI assistant designed for the AI-CRM vendor portal. It handles two classes of work:
+1. **Read-only Queries:** E.g., "What is today's revenue?" or "List trial users for Badminton."
+2. **Write-intent Actions:** E.g., "Update user membership date." These are purely drafts and execute **only** upon explicit vendor approval (Human-In-The-Loop).
 
-We are building the future of local hobby communities. As part of this vision, the **HobbyFi Copilot** was designed and implemented to serve as an intelligent, secure, and resilient AI assistant integrated directly into the AI-CRM vendor portal. This report provides a comprehensive overview of the architecture, engineering trade-offs, security guardrails, and special features developed to ensure a production-ready standard. 
-
-The Copilot is engineered to handle two distinct categories of tasks:
-1. **Read-only Queries**: Seamlessly answering CRM questions (e.g., "what is today's revenue?", "list trial users of badminton").
-2. **Write-intent Actions**: Drafting mutation requests (e.g., "update user membership date", "increase free trial") which are strictly gated behind a **human-in-the-loop (HITL)** vendor approval workflow. The AI models have zero direct mutation privileges.
-
-### Document Links
-For deep technical tracking and setup instructions, please refer to the following project documents:
-- [README.md](file:///c:/Users/Heavenly/Desktop/HobbyFi/README.md) - Setup, Deployment, and Architecture Overview.
-- [CHANGELOG.md](file:///c:/Users/Heavenly/Desktop/HobbyFi/CHANGELOG.md) - Detailed audit of all technical decisions and file modifications.
-- [LEARNING_SEQUENCE.md](file:///c:/Users/Heavenly/Desktop/HobbyFi/LEARNING_SEQUENCE.md) - Step-by-step developer learning progression.
+### Reference Documents
+For full deployment instructions and audit logs, see our supplementary documents:
+- [README: Setup & Architecture](https://docs.google.com/document/d/14dI0y45quBI65JKYwmn9sY3c0Iqm12cIq7Q__HmF5yM/edit?usp=sharing)
+- [CHANGELOG: Implementation Audit](https://docs.google.com/document/d/1hi-KmDAnzcq2IAd2s1tfvRsVqDgUcVfndgl9n52y58g/edit?usp=sharing)
+- [LEARNING_SEQUENCE: Development Progression](https://docs.google.com/document/d/1jY8ZFtGcf-FuNjkBaEyO8i80ymd0daRzMrvM7yjcOGM/edit?usp=sharing)
 
 ---
 
 ## 2. Architecture Overview
-
-The system architecture prioritizes security, explicit state management, and separation of concerns. By intentionally splitting the stack into decoupled layers, we maintain testability and deterministic control over a non-deterministic LLM.
+We decoupled the LLM from the database, treating the model as a reasoning engine that invokes strictly-typed API tools. The model has zero direct mutation privileges.
 
 ### Request Lifecycle
-```text
-Vendor Browser UI (HTMX/Alpine.js)
-  -> FastAPI REST API
-  -> VendorAuthMiddleware (Extracts X-Vendor-ID)
-  -> CopilotService (Injects Vendor Scope)
-  -> LangGraph State Machine (Orchestration)
-  -> Gemini Tool-Calling LLM
-  -> CRM Tools / Approval Executor (HITL)
-  -> PostgreSQL + pgvector (Dockerized)
+```mermaid
+flowchart TD
+    UI["Vendor Browser UI (HTMX/Alpine.js)"] --> API["FastAPI REST API"]
+    API --> Auth["VendorAuthMiddleware (Extracts X-Vendor-ID)"]
+    Auth --> Copilot["CopilotService (Injects Vendor Scope)"]
+    Copilot --> LangGraph["LangGraph State Machine (Orchestration)"]
+    
+    LangGraph <--> Gemini["Gemini 2.5 Flash (LLM)"]
+    LangGraph --> Tools["CRM Tools & Approval Executor"]
+    Tools <--> DB[("PostgreSQL + pgvector")]
 ```
-
-**Core Architectural Rule:** The LLM is isolated from the database. It can only invoke strongly-typed tools via Pydantic schemas. 
-- **Read Tools:** Return scoped data explicitly filtered by the authenticated `vendor_id`.
-- **Write Tools:** Return a draft action with `requires_approval=true`, creating an `audit_logs` entry in the database. The workflow halts until the vendor explicitly approves or rejects the action via the UI.
 
 ---
 
-## 3. Technology Stack and Frameworks
+## 3. Technology Stack & Trade-offs
+We chose a unified Python stack to maintain testability and seamless integration with ML libraries.
 
-We deliberately chose a unified Python stack over a split TypeScript/Python architecture to maximize maintainability, ease of testing, and seamless integration with data science libraries.
+- **Orchestration:** **LangGraph** (Explicit cyclical state machine) & **FastAPI** (Type-safe backend).
+- **Database:** **PostgreSQL 16** with **pgvector**.
+- **LLM:** **Gemini 2.5 Flash** (Primary) with **Ollama** (Fallback).
+- **Frontend:** **HTMX & Alpine.js** (Lightweight, assessment-friendly).
 
-| Layer | Technology | Rationale |
-| :--- | :--- | :--- |
-| **Backend API** | FastAPI | Provides type-safe request validation, automatic OpenAPI documentation, and robust dependency injection. |
-| **Agent Orchestration** | LangGraph | Offers an explicit, cyclical state machine for agent-tool routing, making workflows predictable and debuggable. |
-| **Tooling Layer** | LangChain Tools | Uses Pydantic for strict schema validation, natively compatible with Gemini’s tool-calling. |
-| **Primary LLM** | Gemini 2.5 Flash | Cost-effective, fast, and highly capable for tool-calling (via Google AI Studio). |
-| **Database** | PostgreSQL 16 | Reliable relational store for CRM data, conversations, and audit logs. |
-| **Vector Store** | pgvector | Keeps semantic search native to Postgres, avoiding the overhead and cost of external vector DBs (e.g., Pinecone). |
-| **Embeddings** | sentence-transformers | Free, local, open-source embeddings eliminating per-token embedding costs. |
-| **ORM** | SQLAlchemy 2.0 | Mature schema modeling and parameterized queries preventing SQL injection. |
-| **Frontend UI** | Jinja2, HTMX, Alpine.js | Lightweight, fast, and avoids a heavy build pipeline for the assessment demo. |
+**Trade-offs Evaluated:**
+- **Python vs. TypeScript (Mastra):** While TS is strong, AI tools (pgvector, LangGraph) are natively Pythonic. Using Python avoids a split microservice architecture.
+- **pgvector vs. Dedicated Vector DB:** We kept vectors inside PostgreSQL via `pgvector` to reduce infrastructure overhead and keep deployment cost at $0, rather than relying on paid services like Pinecone.
+- **Sliding Window vs. Summarization Memory:** Summarization requires extra LLM calls (latency/cost). A sliding window is deterministic and faster, albeit with shorter historical depth.
 
 ---
 
 ## 4. Memory Strategy
-
-Managing LLM memory is critical for controlling context windows and token costs. 
-
-### Conversation Memory (Sliding Window)
-We implemented a PostgreSQL-backed **sliding window memory**. 
-For every vendor request, the `CopilotService` loads the vendor's conversation history, appends the latest turns, and dynamically prunes the context to the **10 most recent exchanges**. 
-
-**Why this strategy?**
-- **Cost-Efficiency:** Full conversation history causes unbounded token growth and latency.
-- **Accuracy:** Summary memory often hallucinates or drops fine-grained CRM details. A sliding window guarantees perfect recall of recent context.
-- **Determinism:** It is mathematically predictable and easily tested.
-
-### Document Memory (Vector Retrieval)
-For unstructured knowledge, documents are chunked and embedded via `sentence-transformers` into `pgvector`. This separates unstructured RAG memory from structural CRM conversational memory, preventing workflow pollution.
+We implemented a **PostgreSQL-backed sliding window memory**. For every request, the backend loads the active conversation for the authenticated vendor and dynamically prunes the context to the **10 most recent exchanges**. This caps token limits and prevents hallucination, ensuring precise CRM interactions. Unstructured document memory is kept separate via `pgvector` embeddings to avoid workflow pollution.
 
 ---
 
-## 5. Security and Guardrails Framework
+## 5. Security & Guardrails
+Safety is enforced through four distinct layers, ensuring prompts are not treated as permissions.
 
-Safety does not rely on prompt obedience. We implemented a defense-in-depth strategy across four layers.
-
-### 1. Request-Level Guardrails
-- **VendorAuthMiddleware:** Validates the `X-Vendor-ID` header. The frontend demo defaults to `v_12345_abc`, proving multi-tenancy.
-- **Input Sanitization:** Chat inputs are hard-capped at 2000 characters to mitigate prompt injection and buffer abuse.
-
-### 2. Tool-Level Guardrails (Tenant Isolation)
-- **Deterministic Scoping:** The `CopilotService` overrides any LLM-supplied `vendor_id` with the cryptographically authenticated `vendor_id` from the request state. The model physically cannot query another vendor's data.
-- **SQLAlchemy ORM:** Used exclusively to prevent SQL injection.
-
-### 3. Approval-Level Guardrails (HITL)
-- **Immutable Audit Trail:** Write tools create an `audit_logs` row (status: `pending`). The copilot never executes `UPDATE` or `INSERT` on business entities directly.
-- **Execution Validation:** When a vendor clicks "Approve", the API verifies that the `audit_log.vendor_id` matches the authenticated `vendor_id` before committing the transaction.
-
-### 4. Prompt-Level Guardrails
-- System prompts are tightly constrained, instructing the model to be concise, rely entirely on tool data, and treat all mutations as drafts.
+1. **Request-Level:** `VendorAuthMiddleware` validates the `X-Vendor-ID` header.
+2. **Tool-Level (Tenant Isolation):** The backend actively overrides any LLM-supplied vendor scope with the cryptographically authenticated `vendor_id`. The LLM cannot query cross-vendor data.
+3. **Approval-Level (HITL):** Write tools draft `audit_logs` (status: `pending`). The copilot executes nothing directly. The API verifies the authenticated vendor against the pending log before committing a transaction.
+4. **Prompt-Level:** Strict instructions direct the LLM to remain concise and rely wholly on tool data.
 
 ---
 
-## 6. Special Features: Enhanced Control and Resilience
+## 6. Workflow Orchestration & Mock Schema
+Our schema comprehensively covers the AI-CRM requirements: `vendors`, `users`, `games`, `memberships`, `orders`, `audit_logs`, `runtime_events`, and `conversations`.
 
-To elevate this project to a production-ready standard, several advanced engineering features were implemented beyond the base requirements.
+**Read Workflow:**
+Vendor query -> FastAPI Auth -> Copilot loads windowed memory -> LLM calls Read Tool -> Backend enforces `vendor_id` -> Response returned.
 
-### 1. Graceful LLM Fallback Mechanism
-Free-tier LLM APIs are subject to strict rate limits and quotas. To ensure the vendor portal never experiences a catastrophic failure (500 Server Error) during a demo or high load, we built a tiered fail-safe:
-1. **Primary (Gemini 2.5 Flash):** Full tool-calling orchestration.
-2. **Secondary (Local Model):** If Gemini is exhausted, the system seamlessly routes to a local Ollama-compatible endpoint.
-3. **Tertiary (Deterministic Fallback):** If no local model is available, a deterministic responder takes over, providing audited, hardcoded CRM responses while maintaining multi-tenant isolation.
-*The UI dynamically displays badges (`Gemini Mode`, `Local Model`, `Deterministic Fallback`) to maintain total transparency with the vendor.*
-
-### 2. Single-Flight UI Approvals
-To prevent race conditions, the UI uses strict Alpine.js state management. Approval buttons are disabled immediately upon click, preventing rapid-fire double submissions. Approvals resolve only after a verified 200 OK from the server, otherwise reverting state and displaying error details.
-
-### 3. Runtime Event Logging
-In addition to business `audit_logs`, the backend tracks `runtime_events`. Every time the LLM fails over to a fallback mechanism, it is permanently logged. This allows DevOps to monitor API quota health and system resilience.
+**Write Workflow:**
+Vendor mutation intent -> LLM calls Write Tool -> Backend drafts pending `audit_logs` row -> UI displays Approval Card -> Vendor Approves -> Backend verifies identity and executes mutation.
 
 ---
 
-## 7. Mock Data Schema
+## 7. Special Features Added
+To push the project to a production standard, we developed features beyond the base requirements:
 
-The relational schema is compact but completely covers the AI-CRM requirements.
-
-- **vendors:** `id, name, status, payout_balance, created_at, updated_at`
-- **users:** `id, name, email, created_at, updated_at`
-- **games:** `id, name, vendor_id`
-- **memberships:** `id, user_id, game_id, status, expires_at, created_at, updated_at`
-- **orders:** `id, vendor_id, amount, status, created_at, updated_at`
-- **audit_logs:** `id, vendor_id, action_type, action_payload, status, created_at, resolved_at, resolved_by`
-- **runtime_events:** Tracks LLM fallback triggers and system state shifts.
-- **conversations:** `id, vendor_id, messages, created_at, updated_at`
-
-*Seeded Data Highlights:* Vendors `v_12345_abc` (Acme Corp) and `v_67890_xyz` (Globex Inc). Users include Alice Smith and Bob Jones with active/trial memberships in Badminton and Tennis.
+- **Graceful Fallback Mechanism:** Free LLMs hit rate limits. We built a 3-tier fail-safe: **Gemini (Primary) -> Local Model (Secondary) -> Deterministic Responder (Tertiary)**. If quotas deplete, the system degrades seamlessly rather than crashing, updating UI badges to alert the user.
+- **Single-Flight Approvals:** The UI utilizes state locks to prevent duplicate approval mutations (double-clicking).
+- **Runtime Auditing:** System fallback events and edge cases are actively logged in `runtime_events` for DevOps observability.
 
 ---
 
-## 8. Engineering Trade-offs
+## 8. Learnings & Future Upgrades
+The biggest developer learning was the friction between probabilistic models and deterministic business logic. Securing an LLM means assuming it will hallucinate; tenant isolation must exist fundamentally at the backend routing level, independent of the model's choices.
 
-During development, strategic choices were made to optimize for reliability and deployment speed:
+**Recommended Upgrades for Production:**
+- **Bonus Feature (Future RAG Foundation):** We have successfully built and integrated a background document ingestion pipeline that chunks uploaded files and embeds them into `pgvector` (`POST /api/v1/documents/upload`). While this demo focuses purely on structured CRM interactions, this pipeline establishes the foundational workflow needed to expand the Copilot to answer unstructured support documentation queries in future iterations.
+- **Auth:** Migrate `X-Vendor-ID` to JWT/OAuth logic.
+- **Streaming:** Upgrade REST APIs to WebSockets for token-streaming.
+- **RBAC:** Differentiate between Admin (auto-execute) and Staff (HITL required) roles.
 
-1. **Python vs. TypeScript (Mastra):** While TypeScript/Mastra is excellent, this project utilized Python/LangGraph. Because data science tools (pgvector, sentence-transformers, LangGraph) are natively Pythonic, building a single Python FastAPI monolith avoids the complexity and latency of a split microservice (TS API + Python ML worker) architecture.
-2. **Relational Vectors (pgvector) vs. Dedicated Vector DB:** We opted for `pgvector` inside PostgreSQL. It centralizes backups, simplifies Docker orchestration, and reduces infrastructural cost to $0, eliminating the need for paid services like Pinecone for a vendor CRM.
-3. **Sliding Window vs. Summarization Memory:** Summarization requires an extra LLM call (adding latency and cost) and can lose critical entities. A sliding window is deterministic, faster, and cheaper, though it limits historical depth.
-
----
-
-## 9. Future Upgrades and Learnings
-
-### Future Upgrades (Production Readiness)
-- **JWT / OAuth Authentication:** Replace the simulated `X-Vendor-ID` middleware with cryptographic JWT validation tied to an Identity Provider (e.g., Auth0, Firebase).
-- **Alembic Migrations:** Transition from `Base.metadata.create_all` to structured Alembic versioning for safe schema updates.
-- **WebSocket Streaming:** Upgrade the Chat API from REST to WebSockets to stream LLM tokens to the UI in real-time, drastically reducing perceived latency.
-- **Granular RBAC:** Expand approval logic so "Admins" can auto-execute writes, while "Staff" require HITL approval.
-
-### Developer Learnings
-Building this copilot highlighted the friction between *probabilistic* LLMs and *deterministic* business logic. The greatest lesson was that **prompts are not permissions**. Attempting to prompt an LLM to "only query vendor A" is mathematically unsafe. Security must be enforced by injecting context at the API dependency layer, entirely bypassing the LLM's decision-making process.
-
----
-
-## 10. Suggestions for the Reviewer
-
-When reviewing the repository and demo, I recommend the following sequence to fully experience the robust engineering:
-
-1. **Test the Happy Path (Read):** Ask the Copilot, *"What is my revenue today?"* or *"List trial users for Badminton."* Observe the fast response and correct multi-tenant scoping.
-2. **Test the Guardrails (Security):** Ask the Copilot to *"Show me data for vendor v_67890_xyz"*. Observe how the deterministic backend overrides the LLM and strictly returns data for your authenticated vendor (`v_12345_abc`).
-3. **Test the Workflow (Write):** Tell the Copilot to *"Increase the free trial for Alice Smith"*. Notice that it **does not** change the database. Instead, an Approval Card appears in the UI. 
-4. **Test the Fallback:** In `.env`, artificially lower `DEMO_LLM_CALL_BUDGET=0`. Refresh and ask a question. Watch the UI elegantly degrade to the deterministic fallback, maintaining application uptime.
-
-Thank you for the opportunity to build the HobbyFi Copilot. This architecture represents a highly scalable, defensible, and cost-efficient foundation for local hobby communities.
+**Reviewer Note:** To fully experience the robustness, we encourage testing the failure states: try asking for data belonging to another vendor (e.g. `v_67890_xyz`), or set your local `DEMO_LLM_CALL_BUDGET=0` to watch the elegant fallback mechanisms engage in real time.

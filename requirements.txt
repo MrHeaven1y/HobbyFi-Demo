@@ -1,5 +1,5 @@
 fastapi==0.111.0 # web framework
-sentence-transformers==3.0.1 # package for embedding
+requests>=2.0 # for hugging face inference API
 google-generativeai==0.7.2 # googles gemini api package
 uvicorn[standard]==0.30.1 # ASGI server
 pydantic==2.7.4 # data validation and settings management

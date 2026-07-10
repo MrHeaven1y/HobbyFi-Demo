@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # PostgreSQL connection string (includes pgvector extension)
     DATABASE_URL: str
 
+    # Hugging Face token for Inference API
+    HUGGINGFACE_TOKEN: str
+
     # Google Gemini API key (free tier from Google AI Studio)
     GEMINI_API_KEY: str
     LLM_MODEL_NAME: str = "gemini-2.5-flash"
