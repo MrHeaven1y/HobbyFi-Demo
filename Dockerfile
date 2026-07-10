@@ -1,40 +1,57 @@
 # ==============================================================================
 # HobbyFi Copilot - Production Dockerfile
 # ==============================================================================
-# Multi-stage build for the HobbyFi AI Copilot vendor portal.
-# Uses Python 3.11-slim as the base image for a minimal footprint.
+# Production-ready Docker image for the HobbyFi AI Copilot.
 #
-# Build:  docker build -t hobbyfi-copilot .
-# Run:    docker-compose up  (preferred, see docker-compose.yml)
+# Build:
+#   docker build -t hobbyfi-copilot .
+#
+# Run:
+#   docker run -p 8000:8000 hobbyfi-copilot
+#
 # ==============================================================================
 
-FROM python:3.11-slim AS base
+FROM python:3.11-slim
 
-# Prevent Python from writing .pyc files and enable unbuffered stdout/stderr
-# so logs appear in real-time in Docker logs.
+# ------------------------------------------------------------------------------
+# Python Configuration
+# ------------------------------------------------------------------------------
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# Install system dependencies required by psycopg2 and sentence-transformers
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# ------------------------------------------------------------------------------
+# System Dependencies
+# ------------------------------------------------------------------------------
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies first (Docker layer caching optimization)
+# ------------------------------------------------------------------------------
+# Install Python Dependencies
+# ------------------------------------------------------------------------------
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
 
-# Copy the application source code
+RUN python -m pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# ------------------------------------------------------------------------------
+# Copy Application
+# ------------------------------------------------------------------------------
 COPY . .
 
-# Expose the FastAPI port
+# ------------------------------------------------------------------------------
+# Expose Port
+# ------------------------------------------------------------------------------
 EXPOSE 8000
 
-# Run the application with uvicorn
-# --host 0.0.0.0 binds to all interfaces inside the container
-# --workers 1 is suitable for development; increase for production
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# ------------------------------------------------------------------------------
+# Start FastAPI
+# ------------------------------------------------------------------------------
+# Render injects PORT automatically.
+# Local Docker falls back to 8000.
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

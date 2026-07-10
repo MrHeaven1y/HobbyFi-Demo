@@ -58,6 +58,11 @@ class UpdateUserFreeTrialInput(BaseModel):
     )
 
 
+class GetMembershipDetailsInput(BaseModel):
+    user_id: str = Field(..., description="The exact UUID of the user.")
+    game_id: str = Field(..., description="The exact UUID of the game.")
+
+
 # ──────────────────────────── Tool factory ──────────────────────────────────────
 
 def get_crm_tools(db: Session, authenticated_vendor_id: Optional[str] = None) -> List[Any]:
@@ -115,6 +120,32 @@ def get_crm_tools(db: Session, authenticated_vendor_id: Optional[str] = None) ->
             }
             for user, membership in results
         ]
+
+    @tool("get_membership_details", args_schema=GetMembershipDetailsInput)
+    def get_membership_details(user_id: str, game_id: str) -> Dict[str, Any]:
+        """Fetches the current membership details for a specific user and game."""
+        effective_vendor_id = scoped_vendor_id()
+        if not effective_vendor_id:
+            return {"error": "Authenticated vendor scope is required."}
+
+        membership = (
+            db.query(Membership)
+            .join(Game, Game.id == Membership.game_id)
+            .filter(Membership.user_id == user_id)
+            .filter(Membership.game_id == game_id)
+            .filter(Game.vendor_id == effective_vendor_id)
+            .first()
+        )
+
+        if not membership:
+            return {"error": "Membership not found or unauthorized"}
+        
+        return {
+            "membership_id": membership.id,
+            "user_id": membership.user_id,
+            "game_id": membership.game_id,
+            "status": membership.status,
+        }
 
     @tool("update_membership", args_schema=UpdateMembershipInput)
     def update_membership(user_id: str, game_id: str, new_status: str) -> Dict[str, Any]:
@@ -207,6 +238,7 @@ def get_crm_tools(db: Session, authenticated_vendor_id: Optional[str] = None) ->
     return [
         get_vendor_info,
         get_trial_users,
+        get_membership_details,
         update_membership,
         get_todays_revenue,
         list_vendor_orders,

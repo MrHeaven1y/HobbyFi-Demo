@@ -46,6 +46,7 @@ services:
     environment:
       # Override DATABASE_URL to point to the Docker network hostname
       DATABASE_URL: postgresql+psycopg2://user:password@db:5432/hobbyfi
+      LOCAL_MODEL_BASE_URL: http://host.docker.internal:11434
     depends_on:
       db:
         condition: service_healthy

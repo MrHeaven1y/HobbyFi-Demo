@@ -61,19 +61,25 @@ class CopilotService:
             model=settings.LLM_MODEL_NAME,
             google_api_key=settings.GEMINI_API_KEY,
             temperature=0.2,
+            max_retries=0,
         )
         self.tools = get_crm_tools(db, authenticated_vendor_id=vendor_id)
         self.llm_with_tools = self.llm.bind_tools(self.tools)
 
-        self.graph = self._build_graph()
+        self.graph = self._build_graph_for_llm(self.llm_with_tools)
 
     # ──────────────────────── Graph construction ──────────────────────────────
 
-    def _build_graph(self):
+    def _build_graph_for_llm(self, bound_llm):
         """Build and compile the LangGraph state machine."""
         workflow = StateGraph(AgentState)
 
-        workflow.add_node("agent", self._run_agent)
+        def run_agent(state: AgentState):
+            messages = state["messages"]
+            response = bound_llm.invoke(messages)
+            return {"messages": [response]}
+
+        workflow.add_node("agent", run_agent)
         workflow.add_node("tools", self._run_tools)
 
         workflow.set_entry_point("agent")
@@ -92,14 +98,6 @@ class CopilotService:
         workflow.add_edge("tools", "agent")
 
         return workflow.compile()
-
-    # ──────────────────────── Graph nodes ─────────────────────────────────────
-
-    def _run_agent(self, state: AgentState):
-        """LLM reasoning node — invokes the model with the current messages."""
-        messages = state["messages"]
-        response = self.llm_with_tools.invoke(messages)
-        return {"messages": [response]}
 
     def _run_tools(self, state: AgentState):
         """
@@ -292,7 +290,7 @@ class CopilotService:
 
     def _local_model_warning(self) -> str:
         return (
-            "Gemini free-tier quota is exhausted. A local model is handling this response."
+            f"Gemini free-tier quota is exhausted. A local model ({settings.LOCAL_MODEL_NAME}) is handling this response."
         )
 
     def _deterministic_warning(self) -> str:
@@ -323,60 +321,38 @@ class CopilotService:
             "tell the user writes require approval."
         )
 
-    def _answer_with_local_model(self, query: str) -> Optional[dict]:
+    def _answer_with_local_graph(self, messages: list) -> Optional[dict]:
         """
-        Try an optional local Ollama-compatible model.
-
-        Returns None when local fallback is disabled, Ollama is not running, or
-        the configured model is not available.
+        Use ChatOllama to execute the exact same tools graph as Gemini.
+        Returns None if local fallback is disabled or Ollama probe fails.
         """
         if not settings.LOCAL_MODEL_ENABLED:
             return None
 
         try:
+            from langchain_ollama import ChatOllama
+            
+            # Fast probe to see if Ollama is up before building graph
             tags_url = f"{settings.LOCAL_MODEL_BASE_URL.rstrip('/')}/api/tags"
-            with url_request.urlopen(tags_url, timeout=settings.LOCAL_MODEL_TIMEOUT_SECONDS) as response:
-                tags_payload = json.loads(response.read().decode("utf-8"))
+            with url_request.urlopen(tags_url, timeout=2) as response:
+                pass
 
-            models = tags_payload.get("models", [])
-            model_names = {model.get("name", "").split(":")[0] for model in models}
-            configured_model_base = settings.LOCAL_MODEL_NAME.split(":")[0]
-            if configured_model_base not in model_names:
-                self._record_runtime_event(
-                    event_type="local_model_unavailable",
-                    mode="deterministic",
-                    reason="configured_model_missing",
-                    detail=f"model={settings.LOCAL_MODEL_NAME}",
-                )
-                return None
-
-            prompt = (
-                "You are HobbyFi Copilot running in local fallback mode.\n"
-                "Answer only from the provided vendor-scoped context.\n"
-                "Keep the answer concise and professional.\n\n"
-                f"{self._build_local_model_context()}\n\n"
-                f"User question: {query}"
+            local_llm = ChatOllama(
+                model=settings.LOCAL_MODEL_NAME,
+                base_url=settings.LOCAL_MODEL_BASE_URL,
+                temperature=0.2,
             )
-            generate_url = f"{settings.LOCAL_MODEL_BASE_URL.rstrip('/')}/api/generate"
-            request_body = json.dumps(
-                {
-                    "model": settings.LOCAL_MODEL_NAME,
-                    "prompt": prompt,
-                    "stream": False,
-                }
-            ).encode("utf-8")
-            request = url_request.Request(
-                generate_url,
-                data=request_body,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with url_request.urlopen(request, timeout=settings.LOCAL_MODEL_TIMEOUT_SECONDS) as response:
-                generation_payload = json.loads(response.read().decode("utf-8"))
+            local_llm_with_tools = local_llm.bind_tools(self.tools)
+            local_graph = self._build_graph_for_llm(local_llm_with_tools)
 
-            answer = generation_payload.get("response")
-            if not answer:
-                return None
+            initial_state = {
+                "messages": messages,
+                "requires_approval": False,
+                "approval_payload": None,
+                "audit_log_id": None,
+            }
+            final_state = local_graph.invoke(initial_state)
+            final_response = self._normalize_content(final_state["messages"][-1].content)
 
             self._record_runtime_event(
                 event_type="llm_fallback",
@@ -384,17 +360,24 @@ class CopilotService:
                 reason="gemini_quota_or_demo_budget_exhausted",
                 detail=f"model={settings.LOCAL_MODEL_NAME}",
             )
-            return self._decorate_response(
-                {
-                    "answer": answer.strip(),
-                    "requires_approval": False,
-                    "audit_log_id": None,
+            
+            if final_state.get("requires_approval"):
+                return self._decorate_response({
+                    "answer": final_response,
+                    "requires_approval": True,
+                    "approval_payload": final_state.get("approval_payload"),
+                    "audit_log_id": final_state.get("audit_log_id"),
                     "sources": [],
-                },
-                "local_model",
-                self._local_model_warning(),
-            )
-        except (OSError, TimeoutError, url_error.URLError, json.JSONDecodeError) as exc:
+                }, "local_model", self._local_model_warning())
+
+            return self._decorate_response({
+                "answer": final_response,
+                "requires_approval": False,
+                "audit_log_id": None,
+                "sources": [],
+            }, "local_model", self._local_model_warning())
+            
+        except Exception as exc:
             self._record_runtime_event(
                 event_type="local_model_unavailable",
                 mode="deterministic",
@@ -403,16 +386,15 @@ class CopilotService:
             )
             return None
 
-    def _answer_with_failsafe(self, query: str, reason: str) -> dict:
+    def _answer_with_failsafe(self, query: str, reason: str, messages: list) -> dict:
         """
         Fallback chain after Gemini is unavailable:
-        1. local model if configured and available;
+        1. local model graph if configured and available;
         2. deterministic audited demo response.
         """
-        if not self._is_write_like_query(query):
-            local_model_result = self._answer_with_local_model(query)
-            if local_model_result:
-                return local_model_result
+        local_model_result = self._answer_with_local_graph(messages)
+        if local_model_result:
+            return local_model_result
 
         result = self._answer_with_local_fallback(query, warning=self._deterministic_warning())
         self._record_runtime_event(
@@ -613,13 +595,28 @@ class CopilotService:
 
         messages.append(HumanMessage(content=query))
 
-        if self._should_use_failsafe():
-            logger.info("demo_llm_budget_exhausted_using_local_fallback", vendor_id=self.vendor_id)
-            fallback_result = self._answer_with_failsafe(query, "demo_llm_call_budget_exhausted")
+        # ── Handle Gemini Exhaustion Cooldown ───────────────────────────────
+        consecutive_fallbacks = 0
+        if memory:
+            for msg in reversed(memory.load()):
+                if msg.get("role") == "assistant":
+                    if msg.get("mode") in ("local_model", "deterministic"):
+                        consecutive_fallbacks += 1
+                    else:
+                        break
+        
+        should_skip_gemini = False
+        if consecutive_fallbacks > 0 and (consecutive_fallbacks % getattr(settings, "GEMINI_RETRY_AFTER_MESSAGES", 3)) != 0:
+            should_skip_gemini = True
+
+        if self._should_use_failsafe() or should_skip_gemini:
+            reason = "gemini_cooldown" if should_skip_gemini else "demo_llm_call_budget_exhausted"
+            logger.info("using_local_fallback", vendor_id=self.vendor_id, reason=reason)
+            fallback_result = self._answer_with_failsafe(query, reason, messages)
             final_response = fallback_result["answer"]
             saved_conversation_id = conversation_id
             if memory:
-                saved_conversation_id = memory.save(query, final_response)
+                saved_conversation_id = memory.save(query, final_response, mode=fallback_result.get("mode", "local_model"))
             fallback_result["conversation_id"] = saved_conversation_id
             return fallback_result
 
@@ -637,11 +634,11 @@ class CopilotService:
             error_text = str(exc)
             if "RESOURCE_EXHAUSTED" in error_text or "429" in error_text:
                 logger.warning("llm_quota_exhausted_using_local_fallback", vendor_id=self.vendor_id)
-                fallback_result = self._answer_with_failsafe(query, "gemini_resource_exhausted")
+                fallback_result = self._answer_with_failsafe(query, "gemini_resource_exhausted", messages)
                 final_response = fallback_result["answer"]
                 saved_conversation_id = conversation_id
                 if memory:
-                    saved_conversation_id = memory.save(query, final_response)
+                    saved_conversation_id = memory.save(query, final_response, mode=fallback_result.get("mode", "local_model"))
                 fallback_result["conversation_id"] = saved_conversation_id
                 return fallback_result
             raise

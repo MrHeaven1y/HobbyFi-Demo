@@ -37,8 +37,11 @@ class Settings(BaseSettings):
     # because it is free and can run fully on the developer machine.
     LOCAL_MODEL_ENABLED: bool = True
     LOCAL_MODEL_BASE_URL: str = "http://127.0.0.1:11434"
-    LOCAL_MODEL_NAME: str = "llama3.2"
-    LOCAL_MODEL_TIMEOUT_SECONDS: int = 5
+    LOCAL_MODEL_NAME: str = "qwen2.5:3b"
+    LOCAL_MODEL_TIMEOUT_SECONDS: int = 120
+
+    # How many fallback messages to process before trying Gemini again
+    GEMINI_RETRY_AFTER_MESSAGES: int = 3
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

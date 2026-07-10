@@ -14,3 +14,4 @@ langchain-google-genai>=1.0 # LangChain integration for Google Gemini LLMs
 langgraph>=0.1 # State-machine graph framework for multi-step agent workflows
 jinja2>=3.1 # Template engine (used for Jinja2Templates in FastAPI)
 python-multipart>=0.0.9 # Required by FastAPI for form data / file uploads
+langchain-ollama>=0.1.0 # LangChain integration for Ollama models

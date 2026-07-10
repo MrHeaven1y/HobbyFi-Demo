@@ -91,13 +91,14 @@ class ConversationMemory:
         )
         return messages
 
-    def save(self, user_message: str, assistant_message: str) -> str:
+    def save(self, user_message: str, assistant_message: str, mode: str = "llm") -> str:
         """
         Append user and assistant messages, then apply the sliding window.
 
         Args:
             user_message: The user's query text.
             assistant_message: The assistant's response text.
+            mode: The mode used for generation (e.g. 'llm', 'local_model', 'deterministic').
 
         Returns:
             The conversation_id (useful when a new conversation was created).
@@ -109,7 +110,7 @@ class ConversationMemory:
 
         # Append the new exchange
         current_messages.append({"role": "user", "content": user_message})
-        current_messages.append({"role": "assistant", "content": assistant_message})
+        current_messages.append({"role": "assistant", "content": assistant_message, "mode": mode})
 
         # Apply sliding window: keep the last N*2 messages (N exchanges)
         max_messages = self.window_size * 2
