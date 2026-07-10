@@ -226,7 +226,7 @@ tests/
 Expected result:
 
 ```text
-4 passed
+9 passed
 ```
 
 ## Documentation

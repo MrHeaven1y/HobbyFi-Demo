@@ -26,7 +26,7 @@ If the AI decides it needs data, it calls a tool:
 
 ### Phase 5: The Approval Workflow (Safety)
 If the AI tried to modify data, it gets intercepted:
-9. **`app/models/audit.py`**: Look at how we store pending actions as Audit Logs.
+9. **`app/models/audit.py`**: Look at how I store pending actions as Audit Logs.
 10. **`app/api/v1/endpoints/approval.py`**: Here you see the endpoints that the vendor uses to actually `approve` or `reject` the pending actions that the AI drafted.
 
 ### Phase 6: Memory & State

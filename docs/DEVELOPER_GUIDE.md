@@ -19,7 +19,7 @@ The vendor approves writes.
 
 ## 1. First Principles
 
-### What Problem Are We Solving?
+### What Problem Am I Solving?
 
 HobbyFi has vendors. Vendors need answers about business data:
 
