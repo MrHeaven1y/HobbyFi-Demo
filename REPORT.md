@@ -1,6 +1,6 @@
 # HobbyFi Copilot: Technical Design & Implementation Report
 
-**Author:** Dibyendu Mukherjee  
+**Author:** Dibayendu Mukherjee  
 **Date:** July 2026  
 **Scope:** AI Copilot for HobbyFi's AI-CRM Vendor Portal  
 
@@ -13,9 +13,9 @@ The **HobbyFi Copilot** is a secure, tool-augmented AI assistant designed for th
 
 ### Reference Documents
 For full deployment instructions and audit logs, see my supplementary documents:
-- [README: Setup & Architecture](https://docs.google.com/document/d/14dI0y45quBI65JKYwmn9sY3c0Iqm12cIq7Q__HmF5yM/edit?usp=sharing)
-- [CHANGELOG: Implementation Audit](https://docs.google.com/document/d/1hi-KmDAnzcq2IAd2s1tfvRsVqDgUcVfndgl9n52y58g/edit?usp=sharing)
-- [LEARNING_SEQUENCE: Development Progression](https://docs.google.com/document/d/1jY8ZFtGcf-FuNjkBaEyO8i80ymd0daRzMrvM7yjcOGM/edit?usp=sharing)
+- [README: Setup & Architecture](https://github.com/MrHeaven1y/HobbyFi-Demo/blob/main/README.md)
+- [CHANGELOG: Implementation Audit](https://github.com/MrHeaven1y/HobbyFi-Demo/blob/main/CHANGELOG.md)
+- [LEARNING_SEQUENCE: Development Progression](https://github.com/MrHeaven1y/HobbyFi-Demo/blob/main/LEARNING_SEQUENCE.md)
 
 ---
 
