@@ -48,6 +48,7 @@ We chose a unified Python stack to maintain testability and seamless integration
 **Trade-offs Evaluated:**
 - **Python vs. TypeScript (Mastra):** While TS is strong, AI tools (pgvector, LangGraph) are natively Pythonic. Using Python avoids a split microservice architecture.
 - **pgvector vs. Dedicated Vector DB:** We kept vectors inside PostgreSQL via `pgvector` to reduce infrastructure overhead and keep deployment cost at $0, rather than relying on paid services like Pinecone.
+- **Embeddings & Memory Constraints:** We initially used local `sentence-transformers` for embeddings. However, because free-tier hosting limits (like Render's 512MB RAM) cause Out of Memory (OOM) errors when loading PyTorch models, we shifted to the **Hugging Face Serverless Inference API**. This offloads the heavy memory burden while remaining 100% free and perfectly maintaining compatibility with our 384-dimensional `pgvector` schema.
 - **Sliding Window vs. Summarization Memory:** Summarization requires extra LLM calls (latency/cost). A sliding window is deterministic and faster, albeit with shorter historical depth.
 
 ---

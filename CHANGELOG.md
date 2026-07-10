@@ -400,3 +400,26 @@ Requirements:
 Production recommendation:
 
 - Replace startup `Base.metadata.create_all` with Alembic migrations before a real production launch.
+
+### Embeddings & Memory Optimization
+
+#### `app/retrieval/embedder.py`
+
+Rewrote the singleton embedder to use the Hugging Face Inference API.
+
+Reason:
+- The previous implementation used `sentence-transformers` locally, which required loading PyTorch and the ML model into memory. This caused Out of Memory (OOM) errors on 512MB RAM constraints (like Render's free tier). The new implementation shifts the workload to Hugging Face's serverless API, drastically reducing the memory footprint to almost zero while keeping the `pgvector` 384-dimensional schema perfectly intact.
+
+#### `app/core/config.py` & `.env`
+
+Added `HUGGINGFACE_TOKEN` configuration.
+
+Reason:
+- Required for authenticating requests to the Hugging Face Inference API.
+
+#### `requirements.txt`
+
+Removed `sentence-transformers` and added `requests`.
+
+Reason:
+- Prevents the heavy PyTorch framework from being downloaded and installed during deployment, saving substantial disk space and memory.

@@ -26,6 +26,9 @@ services:
       - key: GEMINI_API_KEY
         sync: false
 
+      - key: HUGGINGFACE_TOKEN
+        sync: false
+
       - key: LLM_MODEL_NAME
         value: gemini-2.5-flash
 

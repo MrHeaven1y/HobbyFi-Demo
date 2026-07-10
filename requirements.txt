@@ -1,17 +1,17 @@
 fastapi==0.111.0 # web framework
-requests>=2.0 # for hugging face inference API
 google-generativeai==0.7.2 # googles gemini api package
-uvicorn[standard]==0.30.1 # ASGI server
-pydantic==2.7.4 # data validation and settings management
-pydantic-settings==2.3.4 # this package builds on Pydantic for env var, config files, defaults
-structlog==24.2.0 # logging library for both machine and human friendly
-python-dotenv==1.0.1 # loads env far from env file
-sqlalchemy>=2.0 # SQLAlchemy is the primary ORM and SQL toolkit
-psycopg2-binary>=2.9 # This is the PostgreSQL database adapter for Python
-pgvector==0.3.2 # install python extension to use PostgreSQL pgvector extension
-langchain>=0.2 # LangChain core framework for tool/agent orchestration
-langchain-google-genai>=1.0 # LangChain integration for Google Gemini LLMs
-langgraph>=0.1 # State-machine graph framework for multi-step agent workflows
 jinja2>=3.1 # Template engine (used for Jinja2Templates in FastAPI)
-python-multipart>=0.0.9 # Required by FastAPI for form data / file uploads
+langchain-google-genai>=1.0 # LangChain integration for Google Gemini LLMs
 langchain-ollama>=0.1.0 # LangChain integration for Ollama models
+langchain>=0.2 # LangChain core framework for tool/agent orchestration
+langgraph>=0.1 # State-machine graph framework for multi-step agent workflows
+pgvector==0.3.2 # install python extension to use PostgreSQL pgvector extension
+psycopg2-binary>=2.9 # This is the PostgreSQL database adapter for Python
+pydantic-settings==2.3.4 # this package builds on Pydantic for env var, config files, defaults
+pydantic==2.7.4 # data validation and settings management
+python-dotenv==1.0.1 # loads env far from env file
+python-multipart>=0.0.9 # Required by FastAPI for form data / file uploads
+requests>=2.0 # for hugging face inference API
+sqlalchemy>=2.0 # SQLAlchemy is the primary ORM and SQL toolkit
+structlog==24.2.0 # logging library for both machine and human friendly
+uvicorn[standard]==0.30.1 # ASGI server

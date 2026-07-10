@@ -101,6 +101,7 @@ DEBUG=True
 
 DATABASE_URL="postgresql+psycopg2://user:password@localhost:5432/hobbyfi"
 
+HUGGINGFACE_TOKEN="your-huggingface-token"
 GEMINI_API_KEY="your-gemini-api-key"
 LLM_MODEL_NAME="gemini-2.5-flash"
 
@@ -160,7 +161,7 @@ Render deployment flow:
 
 1. Push the repo to GitHub.
 2. In Render, create a new Blueprint from the repo.
-3. Set `GEMINI_API_KEY` as a secret environment variable.
+3. Set `GEMINI_API_KEY` and `HUGGINGFACE_TOKEN` as secret environment variables.
 4. Deploy.
 
 Render notes:
