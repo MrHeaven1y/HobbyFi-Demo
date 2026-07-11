@@ -173,6 +173,28 @@ Render notes:
 - `LOCAL_MODEL_ENABLED=false` on Render because Render free web services do not run a local Ollama daemon.
 - The deterministic fallback still keeps the demo usable if Gemini quota is exhausted.
 
+## Working Demo Screenshots
+
+Here are some screenshots demonstrating the working HobbyFi Copilot interface, including the chat assistant, fallback badging, and human-in-the-loop approval actions:
+
+### 1. Copilot Interface & Chat Interface
+![Copilot Interface](./Pictures/chrome_0TWUGEPASU.png)
+
+### 2. Suggested Queries & Response
+![Suggested Queries](./Pictures/chrome_5Fbd15qEo1.png)
+
+### 3. Human-In-The-Loop Approval Card
+![Human-In-The-Loop Approval Action](./Pictures/chrome_N0ZVgJtSap.png)
+
+### 4. System Fallback Badges & Status
+![System Fallback Badges](./Pictures/chrome_bn9cNYIWQt.png)
+
+### 5. Dynamic Loading Alerts & Logs
+![Loading Alerts & Chat Session](./Pictures/chrome_kYERSzjhnC.png)
+
+### 6. Copilot Database State Verification
+![Database Verification](./Pictures/chrome_ljqqVobEJf.png)
+
 ## Example Queries
 
 Read:

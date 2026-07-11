@@ -493,7 +493,63 @@ for label, desc in bullets_details:
 
 
 # ==============================================================================
-# SLIDE 7: Ingestion Pipeline Feature
+# SLIDE 7: The Copilot Interface in Action (Screenshots)
+# ==============================================================================
+slide_img = prs.slides.add_slide(prs.slide_layouts[6])
+set_slide_background(slide_img, LIGHT_BG)
+create_header(slide_img, "The Copilot Interface in Action")
+
+# Left Image: Chat Assistant & Badges
+pic_path_left = "Pictures/chrome_0TWUGEPASU.png"
+if os.path.exists(pic_path_left):
+    # Image frame
+    add_card(slide_img, Inches(0.8), Inches(1.8), Inches(6.8), Inches(4.2), bg_color=WHITE, border_color=PRIMARY)
+    slide_img.shapes.add_picture(pic_path_left, Inches(1.0), Inches(2.0), width=Inches(6.4), height=Inches(3.8))
+    
+    # Caption box
+    tf_cap_left = slide_img.shapes.add_textbox(Inches(0.8), Inches(6.2), Inches(6.8), Inches(1.8)).text_frame
+    tf_cap_left.word_wrap = True
+    p_cap_left = tf_cap_left.paragraphs[0]
+    p_cap_left.text = "Interactive Chat Interface"
+    p_cap_left.font.name = 'Segoe UI'
+    p_cap_left.font.size = Pt(18)
+    p_cap_left.font.bold = True
+    p_cap_left.font.color.rgb = PRIMARY
+    p_cap_left.space_after = Pt(4)
+    
+    p_cap_left_desc = tf_cap_left.add_paragraph()
+    p_cap_left_desc.text = "Features dynamic user-scoped conversation turns with runtime mode badges (Gemini mode, Local model, or Fallback responder)."
+    p_cap_left_desc.font.name = 'Segoe UI'
+    p_cap_left_desc.font.size = Pt(14)
+    p_cap_left_desc.font.color.rgb = LIGHT_TEXT
+
+# Right Image: Human-in-the-Loop Approval Action
+pic_path_right = "Pictures/chrome_N0ZVgJtSap.png"
+if os.path.exists(pic_path_right):
+    # Image frame
+    add_card(slide_img, Inches(8.4), Inches(1.8), Inches(6.8), Inches(4.2), bg_color=WHITE, border_color=PRIMARY)
+    slide_img.shapes.add_picture(pic_path_right, Inches(8.6), Inches(2.0), width=Inches(6.4), height=Inches(3.8))
+    
+    # Caption box
+    tf_cap_right = slide_img.shapes.add_textbox(Inches(8.4), Inches(6.2), Inches(6.8), Inches(1.8)).text_frame
+    tf_cap_right.word_wrap = True
+    p_cap_right = tf_cap_right.paragraphs[0]
+    p_cap_right.text = "Human-in-the-Loop Approvals"
+    p_cap_right.font.name = 'Segoe UI'
+    p_cap_right.font.size = Pt(18)
+    p_cap_right.font.bold = True
+    p_cap_right.font.color.rgb = PRIMARY
+    p_cap_right.space_after = Pt(4)
+    
+    p_cap_right_desc = tf_cap_right.add_paragraph()
+    p_cap_right_desc.text = "Mutating CRM requests return a draft card where changes are locked until explicit approval, ensuring strict transactional safety."
+    p_cap_right_desc.font.name = 'Segoe UI'
+    p_cap_right_desc.font.size = Pt(14)
+    p_cap_right_desc.font.color.rgb = LIGHT_TEXT
+
+
+# ==============================================================================
+# SLIDE 8: Ingestion Pipeline Feature
 # ==============================================================================
 slide7 = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_background(slide7, LIGHT_BG)
