@@ -2,6 +2,9 @@
 
 AI-assisted CRM copilot for the HobbyFi vendor portal. The application answers vendor-scoped CRM questions, drafts write actions, and executes writes only after explicit vendor approval.
 
+Live Demo: [Render-Demo](https://hobbyfi-copilot-wlbk.onrender.com)
+##### **Note: Gemini API has very limited Token use, prompt efficiently.**
+
 ## Status
 
 - Backend: FastAPI, SQLAlchemy, LangGraph, LangChain tools.
