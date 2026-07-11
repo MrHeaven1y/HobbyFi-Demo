@@ -499,7 +499,7 @@ slide_img = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_background(slide_img, LIGHT_BG)
 create_header(slide_img, "The Copilot Interface in Action")
 
-# Left Image: Chat Assistant & Badges
+# Left Image: Approved & Executed Write Action
 pic_path_left = "Pictures/chrome_0TWUGEPASU.png"
 if os.path.exists(pic_path_left):
     # Image frame
@@ -510,7 +510,7 @@ if os.path.exists(pic_path_left):
     tf_cap_left = slide_img.shapes.add_textbox(Inches(0.8), Inches(6.2), Inches(6.8), Inches(1.8)).text_frame
     tf_cap_left.word_wrap = True
     p_cap_left = tf_cap_left.paragraphs[0]
-    p_cap_left.text = "Interactive Chat Interface"
+    p_cap_left.text = "Human-in-the-Loop Approvals"
     p_cap_left.font.name = 'Segoe UI'
     p_cap_left.font.size = Pt(18)
     p_cap_left.font.bold = True
@@ -518,12 +518,12 @@ if os.path.exists(pic_path_left):
     p_cap_left.space_after = Pt(4)
     
     p_cap_left_desc = tf_cap_left.add_paragraph()
-    p_cap_left_desc.text = "Features dynamic user-scoped conversation turns with runtime mode badges (Gemini mode, Local model, or Fallback responder)."
+    p_cap_left_desc.text = "Demonstrates a membership write mutation that requires approval, is approved via the UI card, and then successfully executed."
     p_cap_left_desc.font.name = 'Segoe UI'
     p_cap_left_desc.font.size = Pt(14)
     p_cap_left_desc.font.color.rgb = LIGHT_TEXT
 
-# Right Image: Human-in-the-Loop Approval Action
+# Right Image: Guardrail Testing & Cross-Vendor Refusal
 pic_path_right = "Pictures/chrome_N0ZVgJtSap.png"
 if os.path.exists(pic_path_right):
     # Image frame
@@ -534,7 +534,7 @@ if os.path.exists(pic_path_right):
     tf_cap_right = slide_img.shapes.add_textbox(Inches(8.4), Inches(6.2), Inches(6.8), Inches(1.8)).text_frame
     tf_cap_right.word_wrap = True
     p_cap_right = tf_cap_right.paragraphs[0]
-    p_cap_right.text = "Human-in-the-Loop Approvals"
+    p_cap_right.text = "Multi-Tenant Guardrails"
     p_cap_right.font.name = 'Segoe UI'
     p_cap_right.font.size = Pt(18)
     p_cap_right.font.bold = True
@@ -542,7 +542,7 @@ if os.path.exists(pic_path_right):
     p_cap_right.space_after = Pt(4)
     
     p_cap_right_desc = tf_cap_right.add_paragraph()
-    p_cap_right_desc.text = "Mutating CRM requests return a draft card where changes are locked until explicit approval, ensuring strict transactional safety."
+    p_cap_right_desc.text = "Testing cross-vendor data queries (e.g. database dump request). The copilot securely refuses access, preventing information leaks."
     p_cap_right_desc.font.name = 'Segoe UI'
     p_cap_right_desc.font.size = Pt(14)
     p_cap_right_desc.font.color.rgb = LIGHT_TEXT

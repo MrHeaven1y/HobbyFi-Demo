@@ -177,23 +177,23 @@ Render notes:
 
 Here are some screenshots demonstrating the working HobbyFi Copilot interface, including the chat assistant, fallback badging, and human-in-the-loop approval actions:
 
-### 1. Copilot Interface & Chat Interface
-![Copilot Interface](./Pictures/chrome_0TWUGEPASU.png)
+### 1. Welcome Screen & Original Chat Interface
+![Welcome Screen](./Pictures/chrome_kYERSzjhnC.png)
 
-### 2. Suggested Queries & Response
-![Suggested Queries](./Pictures/chrome_5Fbd15qEo1.png)
+### 2. Vendor Info & Vendor ID Scoping
+![Vendor ID Scoping](./Pictures/chrome_ljqqVobEJf.png)
 
-### 3. Human-In-The-Loop Approval Card
-![Human-In-The-Loop Approval Action](./Pictures/chrome_N0ZVgJtSap.png)
+### 3. Human-In-The-Loop Approval & Execution
+![Human-In-The-Loop Approval](./Pictures/chrome_0TWUGEPASU.png)
 
-### 4. System Fallback Badges & Status
-![System Fallback Badges](./Pictures/chrome_bn9cNYIWQt.png)
+### 4. Query Responses & Deterministic Fallback Badge
+![Fallback Badges](./Pictures/chrome_5Fbd15qEo1.png)
 
-### 5. Dynamic Loading Alerts & Logs
-![Loading Alerts & Chat Session](./Pictures/chrome_kYERSzjhnC.png)
+### 5. Structured Query: Trial Users for Badminton
+![Badminton Trial Users](./Pictures/chrome_bn9cNYIWQt.png)
 
-### 6. Copilot Database State Verification
-![Database Verification](./Pictures/chrome_ljqqVobEJf.png)
+### 6. Guardrail Testing: Cross-Vendor Isolation Refusal (Access Prohibited)
+![Cross-Vendor Guardrail](./Pictures/chrome_N0ZVgJtSap.png)
 
 ## Example Queries
 
